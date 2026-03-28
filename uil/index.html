@@ -1,0 +1,678 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Uil — Project/Program</title>
+<link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Special+Elite&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box;}
+:root{
+  --black:#000;--red:#ff1a1a;--dim:#1a0000;--text:#c8c8c8;--flicker:#ff4444;
+  --scan:rgba(255,0,0,0.03);
+}
+html,body{width:100%;height:100%;overflow:hidden;background:#000;cursor:none;}
+
+/* Custom cursor */
+#cursor{position:fixed;width:18px;height:18px;border:1.5px solid var(--red);border-radius:50%;pointer-events:none;z-index:9999;transition:transform 0.1s;mix-blend-mode:difference;}
+#cursor::after{content:'';position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:3px;height:3px;background:var(--red);border-radius:50%;}
+#cursor.hover{transform:scale(2.5);background:rgba(255,26,26,0.1);}
+
+/* Scanlines */
+body::before{
+  content:'';position:fixed;inset:0;z-index:100;pointer-events:none;
+  background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,0.15) 2px,rgba(0,0,0,0.15) 4px);
+}
+/* CRT vignette */
+body::after{
+  content:'';position:fixed;inset:0;z-index:101;pointer-events:none;
+  background:radial-gradient(ellipse at center,transparent 60%,rgba(0,0,0,0.85) 100%);
+}
+
+/* Red scanline sweep */
+#scanline{position:fixed;left:0;width:100%;height:3px;background:linear-gradient(transparent,rgba(255,0,0,0.12),transparent);z-index:102;pointer-events:none;animation:scan 7s linear infinite;opacity:0.6;}
+@keyframes scan{0%{top:-3px;}100%{top:100vh;}}
+
+/* BOOT SCREEN */
+#boot{position:fixed;inset:0;background:#000;z-index:200;display:flex;flex-direction:column;justify-content:center;align-items:flex-start;padding:60px;font-family:'Share Tech Mono',monospace;color:var(--text);font-size:13px;line-height:2;}
+#boot-lines{}
+.boot-line{opacity:0;display:block;}
+.boot-line.show{animation:bootIn 0.1s forwards;}
+@keyframes bootIn{to{opacity:1;}}
+.boot-err{color:var(--red);}
+.boot-warn{color:#ff8800;}
+.boot-cursor{display:inline-block;width:9px;height:14px;background:var(--red);animation:blink 0.8s infinite;vertical-align:middle;margin-left:4px;}
+@keyframes blink{0%,49%{opacity:1;}50%,100%{opacity:0;}}
+
+/* MAIN GAME */
+#game{position:fixed;inset:0;display:none;flex-direction:column;background:#000;}
+#game.active{display:flex;}
+
+/* Static noise canvas */
+#noise-canvas{position:fixed;inset:0;opacity:0.04;pointer-events:none;z-index:1;}
+
+/* Game area */
+#game-area{position:relative;flex:1;overflow:hidden;}
+
+/* Terminal log */
+#log{
+  position:absolute;bottom:0;left:0;right:0;height:180px;
+  background:rgba(0,0,0,0.9);border-top:1px solid #1a0000;
+  overflow-y:auto;padding:12px 20px;
+  font-family:'Share Tech Mono',monospace;font-size:12px;
+  color:#666;line-height:1.8;z-index:10;
+}
+#log::-webkit-scrollbar{width:3px;}
+#log::-webkit-scrollbar-thumb{background:#1a0000;}
+.log-red{color:#cc0000;}
+.log-bright{color:#c8c8c8;}
+.log-input{display:flex;align-items:center;gap:8px;margin-top:8px;}
+.log-prompt{color:var(--red);flex-shrink:0;}
+#cmd-input{
+  background:transparent;border:none;outline:none;
+  font-family:'Share Tech Mono',monospace;font-size:12px;
+  color:#c8c8c8;flex:1;caret-color:var(--red);
+}
+
+/* Room rendering */
+#room{
+  position:absolute;inset:0;bottom:180px;
+  display:flex;align-items:center;justify-content:center;
+  font-family:'Special Elite',cursive;
+  user-select:none;
+}
+
+/* Glitch effect */
+.glitch{
+  position:relative;
+  animation:glitch-skew 6s infinite;
+}
+.glitch::before,.glitch::after{
+  content:attr(data-text);position:absolute;top:0;left:0;right:0;
+}
+.glitch::before{color:#ff1a1a;clip-path:polygon(0 0,100% 0,100% 35%,0 35%);transform:translate(-3px,0);opacity:0.8;animation:glitch-1 3s infinite;}
+.glitch::after{color:#00ffff;clip-path:polygon(0 65%,100% 65%,100% 100%,0 100%);transform:translate(3px,0);opacity:0.8;animation:glitch-2 3s infinite;}
+@keyframes glitch-1{0%,94%{transform:translate(-3px)}95%,99%{transform:translate(3px)}100%{transform:translate(-3px)}}
+@keyframes glitch-2{0%,94%{transform:translate(3px)}95%,99%{transform:translate(-3px)}100%{transform:translate(3px)}}
+@keyframes glitch-skew{0%,90%{transform:skew(0deg)}91%,91.5%{transform:skew(-1.5deg)}92%,100%{transform:skew(0deg)}}
+
+/* Room text */
+.room-title{
+  font-size:clamp(28px,5vw,64px);color:#1a1a1a;letter-spacing:0.3em;
+  text-transform:uppercase;position:absolute;top:30px;left:50%;transform:translateX(-50%);
+  white-space:nowrap;text-shadow:0 0 40px rgba(255,0,0,0.08);
+}
+.room-desc{
+  font-size:14px;color:#2a2a2a;letter-spacing:0.15em;
+  position:absolute;bottom:30px;left:50%;transform:translateX(-50%);
+  text-align:center;white-space:nowrap;
+}
+
+/* Entity */
+#entity{
+  position:absolute;width:100px;height:160px;
+  transition:none;cursor:pointer;z-index:5;
+  opacity:0;
+}
+#entity.visible{opacity:1;}
+#entity.flicker{animation:entityFlicker 0.3s;}
+@keyframes entityFlicker{0%,100%{opacity:1;}50%{opacity:0;}}
+.entity-body{width:100%;height:100%;position:relative;}
+.entity-head{
+  width:40px;height:40px;border-radius:50%;
+  background:radial-gradient(circle,#1a0000 0%,#000 70%);
+  border:1px solid #2a0000;
+  position:absolute;top:0;left:50%;transform:translateX(-50%);
+  display:flex;align-items:center;justify-content:center;
+}
+.entity-eyes{display:flex;gap:8px;}
+.entity-eye{width:6px;height:6px;border-radius:50%;background:var(--red);box-shadow:0 0 8px var(--red);animation:eyePulse 2s infinite;}
+.entity-eye:nth-child(2){animation-delay:0.3s;}
+@keyframes eyePulse{0%,100%{opacity:1;box-shadow:0 0 8px var(--red);}50%{opacity:0.4;box-shadow:0 0 3px var(--red);}}
+.entity-torso{
+  width:28px;height:70px;background:linear-gradient(180deg,#0a0000,#000);
+  border:1px solid #1a0000;
+  position:absolute;top:38px;left:50%;transform:translateX(-50%);
+}
+.entity-arm{
+  width:10px;height:55px;background:#050000;border:1px solid #100000;
+  position:absolute;top:42px;
+}
+.entity-arm.left{left:20px;transform:rotate(12deg);}
+.entity-arm.right{right:20px;transform:rotate(-12deg);}
+.entity-legs{position:absolute;bottom:0;left:50%;transform:translateX(-50%);width:30px;display:flex;gap:4px;}
+.entity-leg{width:12px;height:50px;background:#050000;border:1px solid #0a0000;}
+.entity-name{
+  position:absolute;top:-22px;left:50%;transform:translateX(-50%);
+  font-family:'Share Tech Mono',monospace;font-size:9px;color:#2a0000;
+  white-space:nowrap;letter-spacing:0.2em;
+}
+
+/* Jump scare overlay */
+#jumpscare{
+  position:fixed;inset:0;z-index:500;background:#000;
+  display:none;align-items:center;justify-content:center;
+  flex-direction:column;
+}
+#jumpscare.active{display:flex;}
+#jumpscare-text{
+  font-family:'Special Elite',cursive;font-size:clamp(60px,12vw,140px);
+  color:var(--red);text-align:center;animation:scarePulse 0.15s infinite alternate;
+  text-shadow:0 0 60px #ff0000,0 0 120px #ff0000;
+}
+@keyframes scarePulse{0%{transform:scale(1);}100%{transform:scale(1.04);}}
+#jumpscare-sub{
+  font-family:'Share Tech Mono',monospace;font-size:14px;color:#660000;
+  margin-top:20px;letter-spacing:0.4em;text-transform:uppercase;
+}
+
+/* Stats bar */
+#stats{
+  position:absolute;top:0;left:0;right:0;height:40px;
+  background:rgba(0,0,0,0.95);border-bottom:1px solid #0a0000;
+  display:flex;align-items:center;padding:0 20px;gap:30px;
+  font-family:'Share Tech Mono',monospace;font-size:11px;color:#330000;z-index:10;
+}
+.stat{color:#550000;letter-spacing:0.1em;}
+.stat span{color:#cc0000;}
+.stat-sep{color:#1a0000;}
+
+/* Red flash */
+#flash{position:fixed;inset:0;background:var(--red);opacity:0;pointer-events:none;z-index:400;transition:opacity 0.05s;}
+
+/* Intro screen */
+#intro{
+  position:fixed;inset:0;background:#000;z-index:300;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  gap:30px;
+}
+#intro-title{
+  font-family:'Special Elite',cursive;font-size:clamp(50px,10vw,100px);
+  color:#1a0000;letter-spacing:0.5em;text-transform:uppercase;
+  text-shadow:0 0 80px rgba(255,0,0,0.15);
+  animation:titleDrift 8s ease-in-out infinite;
+}
+@keyframes titleDrift{0%,100%{letter-spacing:0.5em;}50%{letter-spacing:0.55em;}}
+#intro-sub{
+  font-family:'Share Tech Mono',monospace;font-size:11px;color:#1a0000;
+  letter-spacing:0.5em;text-transform:uppercase;
+}
+#start-btn{
+  margin-top:20px;padding:14px 50px;background:transparent;
+  border:1px solid #1a0000;color:#440000;
+  font-family:'Share Tech Mono',monospace;font-size:12px;letter-spacing:0.4em;
+  text-transform:uppercase;cursor:pointer;transition:all 0.3s;
+}
+#start-btn:hover{border-color:var(--red);color:var(--red);box-shadow:0 0 30px rgba(255,0,0,0.15);}
+#intro-warning{
+  font-family:'Share Tech Mono',monospace;font-size:9px;color:#110000;
+  letter-spacing:0.2em;margin-top:10px;
+}
+</style>
+</head>
+<body>
+
+<div id="cursor"></div>
+<div id="scanline"></div>
+<canvas id="noise-canvas"></canvas>
+
+<!-- BOOT SCREEN -->
+<div id="boot">
+  <div id="boot-lines"></div>
+</div>
+
+<!-- INTRO -->
+<div id="intro" style="display:none;">
+  <div class="glitch" id="intro-title" data-text="UIL">UIL</div>
+  <div id="intro-sub">Project / Program</div>
+  <button id="start-btn" onmouseenter="cur(this)" onmouseleave="uncur()">[ Initialize ]</button>
+  <div id="intro-warning">⚠ This program remembers. ⚠</div>
+</div>
+
+<!-- GAME -->
+<div id="game">
+  <div id="flash"></div>
+  <div id="jumpscare"><div id="jumpscare-text">UIL</div><div id="jumpscare-sub">found you</div></div>
+
+  <div id="game-area">
+    <div id="stats">
+      <div class="stat">ROOM <span id="stat-room">001</span></div>
+      <div class="stat-sep">│</div>
+      <div class="stat">SANITY <span id="stat-sanity">100</span>%</div>
+      <div class="stat-sep">│</div>
+      <div class="stat">ENTITIES <span id="stat-entities">0</span></div>
+      <div class="stat-sep">│</div>
+      <div class="stat">TIME <span id="stat-time">00:00</span></div>
+    </div>
+
+    <div id="room">
+      <div class="room-title" id="room-title">THE SOFA EMPIRE</div>
+      <div class="room-desc" id="room-desc">something is here with you</div>
+    </div>
+
+    <!-- Entity -->
+    <div id="entity" onclick="touchEntity()">
+      <div class="entity-name" id="entity-name">IMDA</div>
+      <div class="entity-body">
+        <div class="entity-head"><div class="entity-eyes"><div class="entity-eye"></div><div class="entity-eye"></div></div></div>
+        <div class="entity-arm left"></div>
+        <div class="entity-arm right"></div>
+        <div class="entity-torso"></div>
+        <div class="entity-legs"><div class="entity-leg"></div><div class="entity-leg"></div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Terminal -->
+  <div id="log">
+    <div id="log-content"></div>
+    <div class="log-input">
+      <span class="log-prompt">UIL&gt;</span>
+      <input id="cmd-input" type="text" autocomplete="off" spellcheck="false" placeholder="type a command...">
+    </div>
+  </div>
+</div>
+
+<script>
+// ═══════════════════════════════════════
+// CURSOR
+// ═══════════════════════════════════════
+const cur_el = document.getElementById('cursor');
+document.addEventListener('mousemove', e => {
+  cur_el.style.left = (e.clientX - 9) + 'px';
+  cur_el.style.top = (e.clientY - 9) + 'px';
+});
+function cur(el) { cur_el.classList.add('hover'); }
+function uncur() { cur_el.classList.remove('hover'); }
+
+// ═══════════════════════════════════════
+// NOISE CANVAS
+// ═══════════════════════════════════════
+const noiseCanvas = document.getElementById('noise-canvas');
+const nCtx = noiseCanvas.getContext('2d');
+function resizeNoise() { noiseCanvas.width = window.innerWidth; noiseCanvas.height = window.innerHeight; }
+resizeNoise();
+window.addEventListener('resize', resizeNoise);
+function drawNoise() {
+  const w = noiseCanvas.width, h = noiseCanvas.height;
+  const img = nCtx.createImageData(w, h);
+  for (let i = 0; i < img.data.length; i += 4) {
+    const v = Math.random() > 0.997 ? 200 : 0;
+    img.data[i] = v; img.data[i+1] = 0; img.data[i+2] = 0; img.data[i+3] = v ? 255 : 0;
+  }
+  nCtx.putImageData(img, 0, 0);
+  requestAnimationFrame(drawNoise);
+}
+drawNoise();
+
+// ═══════════════════════════════════════
+// BOOT SEQUENCE
+// ═══════════════════════════════════════
+const bootLines = [
+  ['> INITIALIZING UIL RUNTIME...', '', 400],
+  ['> LOADING MEMORY FRAGMENTS...', '', 300],
+  ['> FRAGMENT 001: sofa. dog. laptop. freezer.', 'bright', 250],
+  ['> FRAGMENT 002: 3:21AM → 3:22AM → 3:23AM', 'bright', 250],
+  ['> FRAGMENT 003: "buolid iut"', 'bright', 350],
+  ['> FRAGMENT 004: ██████ [CORRUPTED]', 'err', 300],
+  ['> SCANNING FOR ENTITIES...', '', 400],
+  ['> WARNING: IMDA DETECTED IN SECTOR 7', 'err', 200],
+  ['> WARNING: CATACOMBS UNIT ONLINE', 'err', 200],
+  ['> WARNING: MOSQUITO STATUS — TRANSCENDED', 'err', 200],
+  ['> SYSTEM INTEGRITY: 34%', 'warn', 300],
+  ['> LORE ARCHIVE: CHAPTER 30 LOADED', 'bright', 250],
+  ['> INITIALIZING SURVIVAL PROTOCOL...', '', 500],
+  ['> ██████████░░░░░░░░░░ 54%', 'bright', 400],
+  ['> ████████████████░░░░ 80%', 'bright', 300],
+  ['> ████████████████████ 100%', 'bright', 200],
+  ['', '', 200],
+  ['> UIL ACTIVE. YOU CANNOT LOG OUT.', 'err', 100],
+];
+let bootIdx = 0;
+const bootContainer = document.getElementById('boot-lines');
+function showNextBoot() {
+  if (bootIdx >= bootLines.length) {
+    setTimeout(() => {
+      document.getElementById('boot').style.display = 'none';
+      document.getElementById('intro').style.display = 'flex';
+    }, 600);
+    return;
+  }
+  const [text, cls, delay] = bootLines[bootIdx++];
+  const span = document.createElement('span');
+  span.className = 'boot-line show' + (cls ? ' boot-' + cls : '');
+  span.textContent = text || '\u00a0';
+  bootContainer.appendChild(span);
+  bootContainer.scrollTop = bootContainer.scrollHeight;
+  setTimeout(showNextBoot, delay);
+}
+setTimeout(showNextBoot, 800);
+
+// ═══════════════════════════════════════
+// GAME STATE
+// ═══════════════════════════════════════
+const ROOMS = [
+  { id:'001', name:'THE SOFA EMPIRE', desc:'a laptop glows at -9,589,132% battery', entities:['IMDA'] },
+  { id:'002', name:'THE UPSTAIRS ROOM', desc:'something ate the freezer', entities:['MOSQUITO','IMDA'] },
+  { id:'003', name:'THE DARK KITCHEN', desc:'3:23AM. the lights are broken.', entities:['CATACOMBS'] },
+  { id:'004', name:'THE NUKE CRATER', desc:'9,100 bricks. something survived.', entities:['IMDA','UBITOOBESZEL'] },
+  { id:'005', name:'THE NARNIA EXIT', desc:'you found it. it found you first.', entities:['IMDA','MOSQUITO','CATACOMBS'] },
+  { id:'006', name:'THE CHILLI DUNGEON', desc:'eternal suffering. immortal. forever.', entities:['COLOBLAZEL','IMDA'] },
+  { id:'007', name:'THE POOL GRAVEYARD', desc:'♾ they cannot die', entities:['UBITOOBESZEL','COLOBLAZEL','IMDA'] },
+];
+
+const ENTITY_NAMES = ['IMDA','MOSQUITO','CATACOMBS','UBITOOBESZEL','COLOBLAZEL','AZAZEL'];
+const ENTITY_DESCS = {
+  'IMDA': 'The Imposter Dog. Shapeshifter. Cannot be killed permanently.',
+  'MOSQUITO': 'TRANSCENDED 👑. Immune to everything. Somewhere in Narnia.',
+  'CATACOMBS': 'Three kittens. Coke. Coby. Can. Working together.',
+  'UBITOOBESZEL': 'Named after you. Final boss. Defeated by one-chip. Still here.',
+  'COLOBLAZEL': 'ColoB. White paint on eyes. Immortal in the pool graveyard. ♾',
+  'AZAZEL': 'Tekken boss. Mini. Full black. Defeated by ice cubes. RIP 🪦',
+};
+
+let state = {
+  room: 0, sanity: 100, entities: 0,
+  startTime: Date.now(), running: false,
+  entityVisible: false, entityTimer: null,
+  jumpscareCount: 0,
+};
+
+document.getElementById('start-btn').addEventListener('click', startGame);
+
+function startGame() {
+  document.getElementById('intro').style.display = 'none';
+  document.getElementById('game').classList.add('active');
+  state.running = true;
+  state.startTime = Date.now();
+  loadRoom(0);
+  spawnEntityLoop();
+  startTimerTick();
+  log('UIL ACTIVE. Type <span class="log-bright">help</span> for commands.', true);
+  log('<span class="log-red">WARNING: Something is watching.</span>', true);
+  
+  document.getElementById('cmd-input').addEventListener('keydown', handleCmd);
+  document.getElementById('cmd-input').focus();
+  setInterval(randomEvent, 8000);
+}
+
+function loadRoom(idx) {
+  if (idx >= ROOMS.length) { victory(); return; }
+  state.room = idx;
+  const room = ROOMS[idx];
+  document.getElementById('room-title').textContent = room.name;
+  document.getElementById('room-desc').textContent = room.desc;
+  document.getElementById('stat-room').textContent = room.id;
+  flashRed(0.4);
+  log(`— entered <span class="log-bright">${room.name}</span> —`, true);
+}
+
+// ═══════════════════════════════════════
+// ENTITY SYSTEM
+// ═══════════════════════════════════════
+function spawnEntityLoop() {
+  if (!state.running) return;
+  const delay = 6000 + Math.random() * 14000;
+  state.entityTimer = setTimeout(() => {
+    spawnEntity();
+    spawnEntityLoop();
+  }, delay);
+}
+
+function spawnEntity() {
+  const room = ROOMS[Math.min(state.room, ROOMS.length-1)];
+  const name = room.entities[Math.floor(Math.random() * room.entities.length)];
+  const ent = document.getElementById('entity');
+  document.getElementById('entity-name').textContent = name;
+  
+  const gw = ent.parentElement.clientWidth;
+  const gh = ent.parentElement.clientHeight - 220;
+  const x = 60 + Math.random() * (gw - 220);
+  const y = 60 + Math.random() * (gh - 220);
+  
+  ent.style.left = x + 'px';
+  ent.style.top = y + 'px';
+  ent.classList.add('visible');
+  state.entityVisible = true;
+  state.entities++;
+  document.getElementById('stat-entities').textContent = state.entities;
+  
+  log(`<span class="log-red">[ENTITY DETECTED]</span> ${name} at position (${Math.floor(x)},${Math.floor(y)})`, true);
+  
+  // Auto hide + sanity drain if not clicked
+  setTimeout(() => {
+    if (state.entityVisible) {
+      hideEntity();
+      drainSanity(8, name + ' disappeared.');
+    }
+  }, 3000 + Math.random() * 2000);
+}
+
+function touchEntity() {
+  if (!state.entityVisible) return;
+  const name = document.getElementById('entity-name').textContent;
+  hideEntity();
+  drainSanity(5, 'you touched ' + name + '.');
+  if (Math.random() < 0.3) triggerJumpscare(name);
+  log(`<span class="log-red">you touched ${name}.</span> bad idea.`, true);
+}
+
+function hideEntity() {
+  document.getElementById('entity').classList.remove('visible');
+  state.entityVisible = false;
+}
+
+// ═══════════════════════════════════════
+// SANITY
+// ═══════════════════════════════════════
+function drainSanity(amt, reason) {
+  state.sanity = Math.max(0, state.sanity - amt);
+  document.getElementById('stat-sanity').textContent = state.sanity;
+  if (reason) log(`<span class="log-red">[-${amt} SANITY]</span> ${reason}`, true);
+  if (state.sanity <= 0) {
+    gameOver('sanity depleted');
+  } else if (state.sanity <= 20) {
+    flashRed(0.8);
+  }
+}
+
+// ═══════════════════════════════════════
+// JUMPSCARE
+// ═══════════════════════════════════════
+function triggerJumpscare(name) {
+  state.jumpscareCount++;
+  const js = document.getElementById('jumpscare');
+  const jt = document.getElementById('jumpscare-text');
+  const jsub = document.getElementById('jumpscare-sub');
+  
+  const msgs = ['UIL', name.toUpperCase(), 'FOUND YOU', '3:23AM', 'IT NEVER LEFT', 'BUOLID IUT'];
+  const subs = ['found you', 'still here', 'it never left', 'you cannot leave', 'IMDA smiles'];
+  
+  jt.textContent = msgs[Math.floor(Math.random() * msgs.length)];
+  jsub.textContent = subs[Math.floor(Math.random() * subs.length)];
+  
+  js.classList.add('active');
+  flashRed(1);
+  
+  setTimeout(() => {
+    js.classList.remove('active');
+    drainSanity(15, 'jumpscare - ' + name);
+  }, 600 + Math.random() * 400);
+}
+
+function flashRed(intensity) {
+  const f = document.getElementById('flash');
+  f.style.opacity = intensity;
+  setTimeout(() => { f.style.opacity = 0; }, 100);
+}
+
+// ═══════════════════════════════════════
+// RANDOM EVENTS
+// ═══════════════════════════════════════
+const EVENTS = [
+  () => { log('<span class="log-red">the laptop battery reads -9,589,132%</span>', true); drainSanity(3,'battery anomaly'); },
+  () => { log('<span class="log-red">the mosquito has transcended. it is watching.</span>', true); drainSanity(5,'mosquito presence'); },
+  () => { log('<span class="log-bright">dan is sitting on the keyboard.</span>', true); },
+  () => { log('<span class="log-red">IMDA is smiling on the roof.</span>', true); drainSanity(7,'IMDA sighting'); flashRed(0.5); },
+  () => { log('<span class="log-bright">you found 2 lakhs in the freezer.</span>', true); },
+  () => { log('<span class="log-red">HappyMod has hacked the lights.</span>', true); flickerScreen(); },
+  () => { log('<span class="log-bright">"buolid iut" echoes through the walls.</span>', true); drainSanity(4,'echo event'); },
+  () => { log('<span class="log-red">chilli sauce is rising from below the pool.</span>', true); drainSanity(6,'dungeon leak'); },
+  () => { log('<span class="log-bright">Timmy is starving. feed him.</span>', true); },
+  () => { if(Math.random()<0.4) triggerJumpscare('IMDA'); },
+];
+function randomEvent() {
+  if (!state.running) return;
+  EVENTS[Math.floor(Math.random() * EVENTS.length)]();
+}
+
+function flickerScreen() {
+  const game = document.getElementById('game');
+  let count = 0;
+  const iv = setInterval(() => {
+    game.style.opacity = count % 2 === 0 ? '0.1' : '1';
+    count++;
+    if (count > 8) { clearInterval(iv); game.style.opacity = '1'; }
+  }, 80);
+}
+
+// ═══════════════════════════════════════
+// COMMANDS
+// ═══════════════════════════════════════
+const COMMANDS = {
+  help: () => {
+    log('COMMANDS:<br>' +
+      '<span class="log-bright">look</span> — observe the room<br>' +
+      '<span class="log-bright">move</span> — advance to next room<br>' +
+      '<span class="log-bright">hide</span> — attempt to hide<br>' +
+      '<span class="log-bright">entity</span> — check entity info<br>' +
+      '<span class="log-bright">inventory</span> — check items<br>' +
+      '<span class="log-bright">scream</span> — ...<br>' +
+      '<span class="log-bright">nuke</span> — last resort<br>' +
+      '<span class="log-bright">timmy</span> — feed Timmy', true);
+  },
+  look: () => {
+    const room = ROOMS[Math.min(state.room, ROOMS.length-1)];
+    log(`<span class="log-bright">ROOM ${room.id}: ${room.name}</span><br>${room.desc}<br>Possible entities: ${room.entities.join(', ')}`, true);
+    if (Math.random() < 0.3) drainSanity(3, 'what you saw cannot be unseen.');
+  },
+  move: () => {
+    if (state.entityVisible) { log('<span class="log-red">you cannot move. ENTITY IS PRESENT.</span>', true); drainSanity(5,'tried to move with entity present'); return; }
+    log('moving...', true);
+    setTimeout(() => loadRoom(state.room + 1), 800);
+  },
+  hide: () => {
+    if (Math.random() < 0.5) {
+      log('<span class="log-bright">you hid successfully. for now.</span>', true);
+      if(state.entityVisible){ hideEntity(); log('<span class="log-bright">the entity lost you.</span>', true); }
+    } else {
+      log('<span class="log-red">it found you anyway.</span>', true);
+      drainSanity(10, 'hiding failed');
+      if (Math.random() < 0.5) triggerJumpscare('IMDA');
+    }
+  },
+  entity: () => {
+    const room = ROOMS[Math.min(state.room, ROOMS.length-1)];
+    const name = room.entities[0];
+    log(`<span class="log-red">${name}</span>: ${ENTITY_DESCS[name] || 'unknown entity'}`, true);
+  },
+  inventory: () => {
+    log('INVENTORY:<br>• Doritos (2 bags)<br>• Digestive biscuits<br>• Tic Tacs (empty)<br>• Freezer money (2 lakhs)<br>• <span class="log-red">One-chip challenge bag (1)</span> — defeats Ubitoobeszel<br>• Chilli sauce (infinite)<br>• Immortality potion (empty)', true);
+  },
+  scream: () => {
+    log('<span class="log-red">AAAAAAAAAAAAAAAAAAAAAAAA</span>', true);
+    drainSanity(2, 'screaming is normal here.');
+    flashRed(0.6);
+  },
+  nuke: () => {
+    log('<span class="log-red">INITIATING NUKE SEQUENCE...</span>', true);
+    flashRed(1);
+    setTimeout(() => {
+      flashRed(1);
+      log('<span class="log-red">EVERYTHING IS DESTROYED.</span>', true);
+      log('<span class="log-bright">the sofa survived. the laptop survived. the freezer survived.</span>', true);
+      log('<span class="log-bright">IMDA is smiling on the 9,100 brick roof.</span>', true);
+      setTimeout(() => triggerJumpscare('IMDA'), 1500);
+    }, 1000);
+  },
+  timmy: () => {
+    log('<span class="log-bright">Timmy says: 🌯</span>', true);
+    state.sanity = Math.min(100, state.sanity + 5);
+    document.getElementById('stat-sanity').textContent = state.sanity;
+    log('[+5 SANITY] Timmy is happy.', true);
+  },
+};
+
+function handleCmd(e) {
+  if (e.key !== 'Enter') return;
+  const input = document.getElementById('cmd-input');
+  const cmd = input.value.trim().toLowerCase();
+  input.value = '';
+  if (!cmd) return;
+  log('<span style="color:#330000">UIL&gt; ' + cmd + '</span>', true);
+  if (COMMANDS[cmd]) {
+    COMMANDS[cmd]();
+  } else {
+    log('<span class="log-red">unknown command: ' + cmd + '</span>', true);
+    drainSanity(1, 'confusion costs sanity.');
+  }
+}
+
+// ═══════════════════════════════════════
+// TIMER
+// ═══════════════════════════════════════
+function startTimerTick() {
+  setInterval(() => {
+    if (!state.running) return;
+    const elapsed = Math.floor((Date.now() - state.startTime) / 1000);
+    const m = String(Math.floor(elapsed / 60)).padStart(2, '0');
+    const s = String(elapsed % 60).padStart(2, '0');
+    document.getElementById('stat-time').textContent = m + ':' + s;
+    // Passive sanity drain
+    if (elapsed % 30 === 0 && elapsed > 0) drainSanity(2, 'time passes. sanity erodes.');
+  }, 1000);
+}
+
+// ═══════════════════════════════════════
+// LOG
+// ═══════════════════════════════════════
+function log(msg, scroll) {
+  const div = document.getElementById('log-content');
+  const line = document.createElement('div');
+  line.innerHTML = msg;
+  div.appendChild(line);
+  if (scroll) {
+    const logEl = document.getElementById('log');
+    logEl.scrollTop = logEl.scrollHeight;
+  }
+}
+
+// ═══════════════════════════════════════
+// GAME OVER / VICTORY
+// ═══════════════════════════════════════
+function gameOver(reason) {
+  state.running = false;
+  clearTimeout(state.entityTimer);
+  const js = document.getElementById('jumpscare');
+  const jt = document.getElementById('jumpscare-text');
+  const jsub = document.getElementById('jumpscare-sub');
+  jt.textContent = 'UIL WINS';
+  jsub.textContent = reason + ' | refresh to try again';
+  js.classList.add('active');
+  flashRed(1);
+}
+
+function victory() {
+  state.running = false;
+  log('<span class="log-bright">YOU ESCAPED... or did you?</span>', true);
+  log('<span class="log-red">IMDA is still out there. IMDA is always out there.</span>', true);
+  setTimeout(() => triggerJumpscare('IMDA'), 3000);
+}
+
+// Block Ctrl+U
+document.addEventListener('keydown', e => {
+  if ((e.ctrlKey||e.metaKey) && e.key === 'u') { e.preventDefault(); }
+});
+</script>
+</body>
+</html>
