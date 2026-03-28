@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nostalgic Melody Player</title>
+    <style>
+        body {
+            background: linear-gradient(135deg, #0a1a2a, #03101c);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            font-family: 'Segoe UI', 'Quicksand', system-ui, sans-serif;
+            margin: 0;
+            color: #eef4ff;
+        }
+        .player {
+            background: rgba(10, 25, 35, 0.75);
+            backdrop-filter: blur(10px);
+            padding: 30px 40px;
+            border-radius: 50px;
+            text-align: center;
+            border: 1px solid rgba(255, 245, 210, 0.3);
+            box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+        }
+        button {
+            background: linear-gradient(135deg, #ffdfa5, #ffce8a);
+            border: none;
+            border-radius: 60px;
+            padding: 12px 30px;
+            font-size: 18px;
+            font-weight: bold;
+            cursor: pointer;
+            font-family: inherit;
+            color: #1e3a4d;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+            transition: 0.2s;
+            margin: 20px 0 10px;
+        }
+        button:hover {
+            transform: scale(1.02);
+            filter: brightness(1.05);
+        }
+        p {
+            font-size: 14px;
+            opacity: 0.8;
+            margin-top: 15px;
+        }
+        .status {
+            font-family: monospace;
+            font-size: 12px;
+            margin-top: 10px;
+            color: #ffd966;
+        }
+    </style>
+</head>
+<body>
+    <div class="player">
+        <h2>🎵 A belugas melody</h2>
+        <button id="toggleBtn">▶ Play</button>
+        <div class="status" id="status">Stopped</div>
+        <p>✨ From the Blue Abyss Domes ✨</p>
+    </div>
+
+    <script>
+        let audioCtx = null;
+        let musicActive = false;
+        let musicInterval = null;
+        let gainNode = null;
+
+        const toggleBtn = document.getElementById('toggleBtn');
+        const statusDiv = document.getElementById('status');
+
+        // The nostalgic note sequence (frequencies in Hz)
+        const notes = [261.63, 329.63, 392.00, 493.88, 440.00, 349.23, 392.00, 293.66, 261.63];
+        let noteIndex = 0;
+
+        // Initialize audio context on first user interaction
+        async function initAudio() {
+            if (audioCtx) return;
+            audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            gainNode = audioCtx.createGain();
+            gainNode.gain.value = 0.3;
+            gainNode.connect(audioCtx.destination);
+        }
+
+        // Play a single note at a given time
+        function playNote(freq, startTime, duration = 0.7, volume = 0.2) {
+            if (!audioCtx || !musicActive) return;
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.type = 'sine';
+            osc.frequency.value = freq;
+            gain.gain.setValueAtTime(volume, startTime);
+            gain.gain.exponentialRampToValueAtTime(0.0001, startTime + duration);
+            osc.connect(gain);
+            gain.connect(gainNode);
+            osc.start(startTime);
+            osc.stop(startTime + duration);
+        }
+
+        // Start the melody loop
+        function startMelody() {
+            if (musicInterval) clearInterval(musicInterval);
+            noteIndex = 0;
+            musicInterval = setInterval(() => {
+                if (!musicActive || !audioCtx) return;
+                const now = audioCtx.currentTime;
+                const note = notes[noteIndex % notes.length];
+                playNote(note, now, 0.7, 0.18);
+                // Add a subtle harmony on even notes
+                if (noteIndex % 2 === 0) {
+                    playNote(note * 1.5, now + 0.05, 0.55, 0.08);
+                }
+                noteIndex++;
+            }, 820); // ~0.82 sec per note
+        }
+
+        // Stop the melody and clean up
+        function stopMelody() {
+            if (musicInterval) {
+                clearInterval(musicInterval);
+                musicInterval = null;
+            }
+            if (gainNode) {
+                gainNode.gain.linearRampToValueAtTime(0, audioCtx.currentTime + 0.2);
+            }
+        }
+
+        // Toggle play/pause
+        async function toggle() {
+            if (!audioCtx) await initAudio();
+
+            if (musicActive) {
+                // Pause
+                musicActive = false;
+                stopMelody();
+                toggleBtn.textContent = '▶ Play';
+                statusDiv.textContent = 'Stopped';
+                if (audioCtx) audioCtx.suspend();
+            } else {
+                // Play
+                if (audioCtx.state === 'suspended') await audioCtx.resume();
+                musicActive = true;
+                gainNode.gain.linearRampToValueAtTime(0.32, audioCtx.currentTime + 0.1);
+                startMelody();
+                toggleBtn.textContent = '⏸ Pause';
+                statusDiv.textContent = 'Playing...';
+            }
+        }
+
+        // Attach event listener
+        toggleBtn.addEventListener('click', toggle);
+    </script>
+</body>
+</html>
