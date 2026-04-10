@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Globed World — Admin Panel</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 100 100%27><text y=%27.9em%27 font-size=%2790%27>🔐</text></svg>">
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&display=swap');
+*{margin:0;padding:0;box-sizing:border-box}
+:root{--bg:#040810;--p:rgba(8,14,28,.97);--a:#00b4ff;--a2:#00e5a0;--a4:#a855f7;--t:#e2e8f0;--t2:#64748b;--bd:rgba(255,255,255,.06);--gl:rgba(255,255,255,.025);--g:#22c55e;--r:#ef4444;--rad:12px}
+html,body{min-height:100vh;font-family:'Inter',sans-serif;background:var(--bg);color:var(--t)}
+button{font-family:inherit;cursor:pointer;border:none;background:none}
+.wrap{max-width:700px;margin:0 auto;padding:24px 16px}
+.hdr{text-align:center;margin-bottom:20px}
+.hdr h1{font-size:24px;font-weight:900;background:linear-gradient(135deg,#fff,var(--a));-webkit-background-clip:text;-webkit-text-fill-color:transparent;margin-bottom:4px}
+.hdr p{font-size:11px;color:var(--t2)}
+.alert{padding:12px 16px;border-radius:var(--rad);margin-bottom:16px;font-size:11px;line-height:1.6;display:none}
+.alert.warn{display:block;background:rgba(255,180,0,.06);border:1px solid rgba(255,180,0,.12);color:#fbbf24}
+.alert.ok{display:block;background:rgba(34,197,94,.06);border:1px solid rgba(34,197,94,.12);color:var(--g)}
+.alert.err{display:block;background:rgba(239,68,68,.06);border:1px solid rgba(239,68,68,.12);color:var(--r)}
+.src-bar{display:flex;gap:6px;margin-bottom:16px;flex-wrap:wrap}
+.src-bar button{padding:8px 14px;border-radius:var(--rad);border:1px solid var(--bd);background:rgba(255,255,255,.03);color:var(--t);font-size:10px;font-weight:600}
+.src-bar button:hover{background:rgba(0,180,255,.06);border-color:var(--a)}
+.src-bar button.active{background:rgba(0,180,255,.1);border-color:var(--a);color:var(--a)}
+.src-bar .imp{background:rgba(168,85,247,.06);color:var(--a4);border-color:rgba(168,85,247,.15)}
+.stats{display:flex;gap:8px;margin-bottom:16px}
+.stat{flex:1;text-align:center;padding:14px 8px;border-radius:var(--rad);background:var(--p);border:1px solid var(--bd)}
+.stat .sv{font-size:28px;font-weight:900;background:linear-gradient(135deg,var(--a),var(--a2));-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.stat .sl{font-size:8px;color:var(--t2);text-transform:uppercase;font-weight:700;letter-spacing:1px;margin-top:2px}
+.toolbar{display:flex;gap:6px;margin-bottom:14px}
+.toolbar input{flex:1;height:40px;border-radius:var(--rad);border:1px solid var(--bd);background:rgba(255,255,255,.04);color:#fff;padding:0 14px;font-size:12px;outline:none;font-family:inherit}
+.toolbar input:focus{border-color:var(--a);box-shadow:0 0 0 3px rgba(0,180,255,.08)}
+.toolbar button{padding:0 14px;height:40px;border-radius:var(--rad);border:1px solid var(--bd);background:rgba(255,255,255,.03);color:var(--t);font-size:10px;font-weight:600;white-space:nowrap}
+.toolbar button:hover{background:rgba(0,180,255,.06);border-color:var(--a)}
+.btn-export{background:rgba(0,229,160,.06)!important;color:var(--a2)!important;border-color:rgba(0,229,160,.15)!important}
+.btn-danger{background:rgba(239,68,68,.06)!important;color:var(--r)!important;border-color:rgba(239,68,68,.15)!important}
+.list{display:flex;flex-direction:column;gap:4px}
+.row{display:flex;align-items:center;gap:12px;padding:12px;border-radius:var(--rad);border:1px solid var(--bd);background:var(--p);transition:.15s}
+.row:hover{background:rgba(0,180,255,.03);border-color:rgba(0,180,255,.08)}
+.row .av{width:40px;height:40px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:18px;background:linear-gradient(135deg,var(--a),var(--a4));flex-shrink:0;overflow:hidden}
+.row .av img{width:40px;height:40px;object-fit:cover;border-radius:inherit}
+.row .info{flex:1;min-width:0}
+.row .nm{font-size:13px;font-weight:700}
+.row .id{font-size:9px;font-family:monospace;color:var(--a);word-break:break-all;user-select:all;cursor:text}
+.row .meta{display:flex;flex-wrap:wrap;gap:8px;margin-top:3px;font-size:9px;color:var(--t2)}
+.row .meta span{display:flex;align-items:center;gap:3px}
+.row .acts{display:flex;gap:4px;flex-shrink:0}
+.row .acts button{width:30px;height:30px;border-radius:8px;border:1px solid var(--bd);background:var(--gl);color:var(--t);font-size:12px;display:flex;align-items:center;justify-content:center}
+.row .acts button:hover{background:rgba(239,68,68,.08);border-color:rgba(239,68,68,.2);color:var(--r)}
+.row .acts .cp:hover{background:rgba(0,180,255,.08);border-color:var(--a);color:var(--a)}
+.empty{text-align:center;padding:40px;color:var(--t2);font-size:12px}
+.empty span{font-size:40px;display:block;margin-bottom:8px;opacity:.3}
+.import-area{display:none;margin-bottom:16px}
+.import-area textarea{width:100%;height:120px;border-radius:var(--rad);border:1px solid var(--bd);background:rgba(255,255,255,.04);color:#fff;padding:12px;font-size:10px;font-family:monospace;outline:none;resize:vertical}
+.import-area textarea:focus{border-color:var(--a4)}
+.import-area .imp-btns{display:flex;gap:6px;margin-top:6px}
+.import-area .imp-btns button{flex:1;height:36px;border-radius:8px;font-size:11px;font-weight:600}
+.toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);padding:8px 20px;border-radius:8px;background:rgba(0,180,255,.15);border:1px solid rgba(0,180,255,.2);color:var(--a);font-size:11px;font-weight:600;display:none;z-index:100;backdrop-filter:blur(12px)}
+.toast.show{display:block;animation:fadeup .3s ease}
+@keyframes fadeup{from{opacity:0;transform:translateX(-50%) translateY(10px)}to{opacity:1;transform:translateX(-50%) translateY(0)}}
+.footer{text-align:center;padding:30px 0 10px;font-size:9px;color:var(--t2)}
+::-webkit-scrollbar{width:3px}::-webkit-scrollbar-thumb{background:rgba(255,255,255,.06);border-radius:3px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="hdr">
+    <div style="font-size:40px;margin-bottom:6px">🔐</div>
+    <h1>Globed World Admin</h1>
+    <p>Manage all registered Globed accounts</p>
+  </div>
+
+  <div class="alert" id="alert"></div>
+
+  <div class="src-bar">
+    <button class="active" onclick="loadLocal()" id="btnLocal">📦 Local Storage</button>
+    <button class="imp" onclick="toggleImport()" id="btnImp">📥 Import JSON</button>
+    <button onclick="exportJSON()" style="margin-left:auto;background:rgba(0,229,160,.06);color:var(--a2);border-color:rgba(0,229,160,.15)">📤 Export JSON</button>
+  </div>
+
+  <div class="import-area" id="impArea">
+    <div style="font-size:10px;color:var(--t2);margin-bottom:6px">Paste the JSON from your main Globed app's console:<br><code style="color:var(--a);font-size:9px">localStorage.getItem('globed_accounts')</code></div>
+    <textarea id="impText" placeholder='Paste JSON here — e.g. [{"user":{"name":"Alex","id":"globed-alex-1234",...},...}]'></textarea>
+    <div class="imp-btns">
+      <button onclick="doImport()" style="background:linear-gradient(135deg,var(--a4),#7c3aed);color:#fff">Load Pasted Data</button>
+      <button onclick="toggleImport()" style="background:rgba(255,255,255,.04);color:var(--t);border:1px solid var(--bd)">Cancel</button>
+    </div>
+  </div>
+
+  <div class="stats" id="stats"></div>
+
+  <div class="toolbar">
+    <input type="text" id="q" placeholder="Search by name, ID, or phone..." oninput="render()">
+    <button class="btn-export" onclick="exportCSV()">📊 CSV</button>
+    <button class="btn-danger" onclick="clearAll()">🗑️</button>
+  </div>
+
+  <div class="list" id="list"></div>
+
+  <div class="footer">Globed World Admin · <span id="ts"></span><br>⚠️ Both pages must be on the <b>same domain</b> to share localStorage</div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+var KEY='globed_accounts';
+var accts=[];
+var source='local';
+
+function toast(msg){var t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');clearTimeout(t._t);t._t=setTimeout(function(){t.classList.remove('show')},2500)}
+
+function showAlert(type,msg){var a=document.getElementById('alert');a.className='alert '+type;a.innerHTML=msg;a.style.display='block'}
+function hideAlert(){document.getElementById('alert').style.display='none'}
+
+function getLocal(){
+  try{var r=JSON.parse(localStorage.getItem(KEY))||[];return r.filter(function(a){var u=a.user||a.u;return u&&u.id&&u.name})}catch(e){return[]}
+}
+function setLocal(l){try{localStorage.setItem(KEY,JSON.stringify(l))}catch(e){}}
+
+function loadLocal(){
+  source='local';
+  document.getElementById('btnLocal').classList.add('active');
+  document.getElementById('btnImp').classList.remove('active');
+  document.getElementById('impArea').style.display='none';
+  accts=getLocal();
+  if(!accts.length){
+    showAlert('warn','⚠️ No accounts found in localStorage.<br><b>Make sure this page is on the SAME domain as your Globed app.</b><br>If hosted separately, use <b>📥 Import JSON</b> to paste data manually.')
+  }else{
+    showAlert('ok','✅ Loaded <b>'+accts.length+'</b> accounts from localStorage (live)')
+  }
+  render();
+}
+
+function toggleImport(){
+  var area=document.getElementById('impArea');
+  var showing=area.style.display==='block';
+  area.style.display=showing?'none':'block';
+  if(!showing)document.getElementById('impText').focus();
+}
+
+function doImport(){
+  var raw=document.getElementById('impText').value.trim();
+  if(!raw){toast('Paste JSON data first');return}
+  try{
+    var parsed=JSON.parse(raw);
+    if(!Array.isArray(parsed)){toast('Must be a JSON array');return}
+    accts=parsed.filter(function(a){var u=a.user||a.u;return u&&u.id&&u.name});
+    if(!accts.length){toast('No valid accounts in data');return}
+    source='imported';
+    document.getElementById('btnLocal').classList.remove('active');
+    document.getElementById('btnImp').classList.add('active');
+    document.getElementById('impArea').style.display='none';
+    showAlert('ok','✅ Imported <b>'+accts.length+'</b> accounts from pasted data (read-only)');
+    render();
+    toast('Loaded '+accts.length+' accounts');
+  }catch(e){
+    showAlert('err','❌ Invalid JSON: '+e.message);
+  }
+}
+
+function render(){
+  var q=document.getElementById('q').value.trim().toLowerCase();
+  var totalContacts=0,totalGroups=0;
+  accts.forEach(function(x){totalContacts+=(x.contacts||[]).length;totalGroups+=(x.groups||[]).length});
+
+  document.getElementById('stats').innerHTML=
+    '<div class="stat"><div class="sv">'+accts.length+'</div><div class="sl">Accounts</div></div>'+
+    '<div class="stat"><div class="sv">'+totalContacts+'</div><div class="sl">Total Contacts</div></div>'+
+    '<div class="stat"><div class="sv">'+totalGroups+'</div><div class="sl">Total Groups</div></div>';
+
+  var filtered=accts;
+  if(q)filtered=accts.filter(function(x){
+    var u=x.user||x.u;
+    return u.name.toLowerCase().indexOf(q)>=0||u.id.toLowerCase().indexOf(q)>=0||(u.phone||'').indexOf(q)>=0||(u.code||'').indexOf(q)>=0
+  });
+
+  var el=document.getElementById('list');
+  if(!filtered.length){
+    el.innerHTML='<div class="empty"><span>👻</span>'+(q?'No accounts match "'+q+'"':'No accounts loaded')+'</div>';
+    return;
+  }
+
+  el.innerHTML=filtered.map(function(x){
+    var u=x.user||x.u;
+    if(!u)return'';
+    var ph=u.phone?(u.code||'')+' '+u.phone:'—';
+    var cc=(x.contacts||[]).length;
+    var gc=(x.groups||[]).length;
+    var pfpHtml=u.pfp?'<img src="'+u.pfp+'" onerror="this.outerHTML=\''+((u.avatar)||'👤')+'\'">':((u.avatar)||'👤');
+
+    return'<div class="row">'+
+      '<div class="av">'+pfpHtml+'</div>'+
+      '<div class="info">'+
+        '<div class="nm">'+u.name+'</div>'+
+        '<div class="id">'+u.id+'</div>'+
+        '<div class="meta">'+
+          '<span>📱 '+ph+'</span>'+
+          '<span>👥 '+cc+' contacts</span>'+
+          (gc?'<span>💬 '+gc+' groups</span>':'')+
+        '</div>'+
+      '</div>'+
+      '<div class="acts">'+
+        '<button class="cp" onclick="cpId(\''+u.id+'\')" title="Copy ID">📋</button>'+
+        (source==='local'?'<button onclick="delAcct(\''+u.id+'\')" title="Delete">🗑️</button>':'')+
+      '</div>'+
+    '</div>'
+  }).join('');
+
+  document.getElementById('ts').textContent='Source: '+(source==='local'?'localStorage':'imported JSON')+' · '+new Date().toLocaleTimeString();
+}
+
+function cpId(id){
+  try{navigator.clipboard.writeText(id);toast('📋 Copied: '+id)}catch(e){toast('Copy failed')}
+}
+
+function delAcct(id){
+  if(source!=='local'){toast('Cannot delete from imported data');return}
+  if(!confirm('Permanently delete this account?'))return;
+  var a=getLocal().filter(function(x){var u=x.user||x.u;return!u||u.id!==id});
+  setLocal(a);
+  accts=a;
+  toast('🗑️ Account deleted');
+  render();
+}
+
+function clearAll(){
+  if(source!=='local'){toast('Cannot clear imported data');return}
+  if(!accts.length){toast('No accounts');return}
+  if(!confirm('⚠️ DELETE ALL '+accts.length+' ACCOUNTS?\n\nThis cannot be undone!'))return;
+  if(!confirm('Are you REALLY sure?'))return;
+  localStorage.removeItem(KEY);
+  accts=[];
+  toast('💀 All cleared');
+  render();
+}
+
+function exportCSV(){
+  if(!accts.length){toast('No data');return}
+  var csv='Name,Globed ID,Phone,Avatar,Contacts,Groups\n';
+  accts.forEach(function(x){
+    var u=x.user||x.u;if(!u)return;
+    var ph=u.phone?(u.code||'')+u.phone:'';
+    csv+='"'+u.name.replace(/"/g,'""')+'","'+u.id+'","'+ph+'","'+(u.avatar||'')+'",'+
+      (x.contacts||[]).length+','+(x.groups||[]).length+'\n';
+  });
+  var b=new Blob([csv],{type:'text/csv'});
+  var l=document.createElement('a');
+  l.href=URL.createObjectURL(b);
+  l.download='globed_accounts_'+new Date().toISOString().slice(0,10)+'.csv';
+  l.click();
+  toast('📊 Exported '+accts.length+' accounts');
+}
+
+function exportJSON(){
+  var data=source==='local'?getLocal():accts;
+  if(!data.length){toast('No data');return}
+  var json=JSON.stringify(data,null,2);
+  var b=new Blob([json],{type:'application/json'});
+  var l=document.createElement('a');
+  l.href=URL.createObjectURL(b);
+  l.download='globed_accounts_'+new Date().toISOString().slice(0,10)+'.json';
+  l.click();
+  toast('📤 Exported JSON');
+}
+
+// Init — try local first
+loadLocal();
+// Auto-refresh local every 3s
+setInterval(function(){if(source==='local'){accts=getLocal();render()}},3000);
+</script>
+</body>
+</html>
