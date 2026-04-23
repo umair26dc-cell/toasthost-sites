@@ -1,0 +1,881 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+    <title>Crane AI — Full Platform | Chat, Code, Images, Memory</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --bg: #0a0a0a;
+            --sb: #101010;
+            --sb2: #181818;
+            --chat: #0a0a0a;
+            --card: #141414;
+            --bd: #1f1f1f;
+            --bd2: #2a2a2a;
+            --or: #f97316;
+            --or2: #fb923c;
+            --tx: #ececec;
+            --tx2: #8a8a8a;
+            --tx3: #4a4a4a;
+            --green: #4ade80;
+            --red: #f87171;
+        }
+
+        body {
+            font-family: 'Segoe UI', 'DM Sans', system-ui, sans-serif;
+            background: var(--bg);
+            color: var(--tx);
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        /* Header */
+        .header {
+            background: var(--sb);
+            border-bottom: 1px solid var(--bd);
+            padding: 12px 24px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 12px;
+            z-index: 10;
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .logo svg {
+            width: 32px;
+            height: 32px;
+        }
+
+        .logo h1 {
+            font-size: 20px;
+            font-weight: 800;
+            background: linear-gradient(135deg, var(--or), var(--or2));
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+        }
+
+        .logo span {
+            font-size: 10px;
+            color: var(--tx3);
+        }
+
+        .new-chat-btn {
+            background: rgba(249, 115, 22, 0.12);
+            border: 1px solid rgba(249, 115, 22, 0.3);
+            border-radius: 100px;
+            padding: 6px 16px;
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--or);
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .new-chat-btn:hover {
+            background: rgba(249, 115, 22, 0.2);
+            transform: scale(1.02);
+        }
+
+        /* Main layout */
+        .main-container {
+            display: flex;
+            flex: 1;
+            overflow: hidden;
+        }
+
+        /* Sidebar */
+        .sidebar {
+            width: 280px;
+            background: var(--sb);
+            border-right: 1px solid var(--bd);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            transition: transform 0.2s ease;
+        }
+
+        .sidebar-header {
+            padding: 16px;
+            border-bottom: 1px solid var(--bd);
+            font-weight: 600;
+            font-size: 13px;
+            color: var(--tx2);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .sidebar-header button {
+            background: none;
+            border: none;
+            color: var(--or);
+            cursor: pointer;
+            font-size: 12px;
+        }
+
+        .history-list {
+            flex: 1;
+            overflow-y: auto;
+            padding: 8px;
+        }
+
+        .history-item {
+            padding: 10px 12px;
+            border-radius: 10px;
+            margin-bottom: 6px;
+            cursor: pointer;
+            transition: all 0.15s;
+            border: 1px solid transparent;
+            position: relative;
+        }
+
+        .history-item:hover {
+            background: var(--sb2);
+            border-color: var(--bd2);
+        }
+
+        .history-item.active {
+            background: rgba(249, 115, 22, 0.08);
+            border-color: rgba(249, 115, 22, 0.2);
+        }
+
+        .history-title {
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--tx);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            padding-right: 24px;
+        }
+
+        .history-preview {
+            font-size: 11px;
+            color: var(--tx3);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            margin-top: 2px;
+        }
+
+        .delete-chat {
+            position: absolute;
+            right: 8px;
+            top: 50%;
+            transform: translateY(-50%);
+            opacity: 0;
+            background: none;
+            border: none;
+            color: var(--red);
+            cursor: pointer;
+            font-size: 12px;
+            transition: opacity 0.15s;
+        }
+
+        .history-item:hover .delete-chat {
+            opacity: 1;
+        }
+
+        /* Chat area */
+        .chat-area {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            background: var(--chat);
+        }
+
+        .messages-container {
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px 24px;
+        }
+
+        .messages-inner {
+            max-width: 800px;
+            margin: 0 auto;
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+
+        .message {
+            display: flex;
+            gap: 12px;
+            animation: fadeIn 0.2s ease;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(8px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .message.user {
+            flex-direction: row-reverse;
+        }
+
+        .avatar {
+            width: 32px;
+            height: 32px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+
+        .message.user .avatar {
+            background: var(--sb2);
+            border: 1px solid var(--bd2);
+            color: var(--tx2);
+            font-size: 14px;
+        }
+
+        .message.assistant .avatar {
+            background: none;
+            color: var(--or);
+        }
+
+        .bubble {
+            max-width: 80%;
+            padding: 12px 16px;
+            border-radius: 18px;
+            font-size: 14px;
+            line-height: 1.6;
+            word-break: break-word;
+        }
+
+        .message.user .bubble {
+            background: rgba(249, 115, 22, 0.12);
+            border: 1px solid rgba(249, 115, 22, 0.2);
+            border-top-right-radius: 4px;
+        }
+
+        .message.assistant .bubble {
+            background: var(--card);
+            border: 1px solid var(--bd);
+            border-top-left-radius: 4px;
+        }
+
+        .bubble pre {
+            background: #1a1a1a;
+            padding: 12px;
+            border-radius: 8px;
+            overflow-x: auto;
+            font-size: 12px;
+            margin: 8px 0;
+        }
+
+        .bubble code {
+            background: #1a1a1a;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-family: monospace;
+            font-size: 12px;
+        }
+
+        .thinking {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px 16px;
+            color: var(--tx2);
+            font-size: 13px;
+        }
+
+        .dot-pulse {
+            display: flex;
+            gap: 4px;
+        }
+
+        .dot-pulse span {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: var(--or);
+            animation: pulse 1.2s infinite;
+        }
+
+        .dot-pulse span:nth-child(2) { animation-delay: 0.2s; }
+        .dot-pulse span:nth-child(3) { animation-delay: 0.4s; }
+
+        @keyframes pulse {
+            0%, 60%, 100% { opacity: 0.3; transform: scale(0.8); }
+            30% { opacity: 1; transform: scale(1.2); }
+        }
+
+        /* Input area */
+        .input-area {
+            padding: 16px 24px 24px;
+            background: var(--bg);
+            border-top: 1px solid var(--bd);
+        }
+
+        .input-wrapper {
+            max-width: 800px;
+            margin: 0 auto;
+            display: flex;
+            gap: 12px;
+            background: var(--sb2);
+            border: 1px solid var(--bd2);
+            border-radius: 28px;
+            padding: 8px 8px 8px 20px;
+            transition: border 0.2s;
+        }
+
+        .input-wrapper:focus-within {
+            border-color: rgba(249, 115, 22, 0.5);
+        }
+
+        textarea {
+            flex: 1;
+            background: none;
+            border: none;
+            outline: none;
+            color: var(--tx);
+            font-family: inherit;
+            font-size: 14px;
+            resize: none;
+            padding: 10px 0;
+            max-height: 120px;
+        }
+
+        textarea::placeholder {
+            color: var(--tx3);
+        }
+
+        .send-btn {
+            width: 40px;
+            height: 40px;
+            border-radius: 40px;
+            background: var(--or);
+            border: none;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+            color: #000;
+            font-weight: 700;
+            transition: all 0.15s;
+        }
+
+        .send-btn:hover {
+            background: var(--or2);
+            transform: scale(1.05);
+        }
+
+        .send-btn:disabled {
+            background: var(--bd2);
+            color: var(--tx3);
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        /* Welcome */
+        .welcome {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            gap: 16px;
+            padding: 48px 20px;
+            min-height: 50vh;
+        }
+
+        .welcome svg {
+            width: 64px;
+            height: 64px;
+        }
+
+        .welcome h2 {
+            font-size: 28px;
+            font-weight: 800;
+            background: linear-gradient(135deg, var(--or), var(--or2));
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+        }
+
+        .welcome p {
+            color: var(--tx2);
+            max-width: 400px;
+        }
+
+        /* Mobile */
+        .menu-toggle {
+            display: none;
+            background: none;
+            border: none;
+            color: var(--tx);
+            font-size: 20px;
+            cursor: pointer;
+        }
+
+        @media (max-width: 700px) {
+            .sidebar {
+                position: fixed;
+                left: 0;
+                top: 60px;
+                bottom: 0;
+                z-index: 100;
+                width: 280px;
+                transform: translateX(-100%);
+                transition: transform 0.2s;
+            }
+            .sidebar.open {
+                transform: translateX(0);
+            }
+            .menu-toggle {
+                display: block;
+            }
+            .bubble {
+                max-width: 90%;
+            }
+            .header {
+                padding: 10px 16px;
+            }
+        }
+
+        .toast {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: var(--card);
+            border: 1px solid var(--bd2);
+            border-radius: 12px;
+            padding: 8px 20px;
+            font-size: 12px;
+            color: var(--tx);
+            z-index: 1000;
+            animation: fadeIn 0.2s ease;
+        }
+    </style>
+</head>
+<body>
+
+<div class="header">
+    <div style="display: flex; align-items: center; gap: 8px;">
+        <button class="menu-toggle" id="menuToggle">☰</button>
+        <div class="logo">
+            <svg viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <circle cx="50" cy="50" r="50" fill="#f97316"/>
+                <rect x="42" y="15" width="16" height="28" rx="8" fill="white"/>
+                <rect x="34" y="36" width="32" height="14" rx="4" fill="white"/>
+                <path d="M50 50 Q50 72 38 72 Q26 72 26 62 Q26 55 34 55" stroke="white" stroke-width="8" fill="none" stroke-linecap="round"/>
+            </svg>
+            <h1>Crane AI</h1>
+            <span>cak_ ready</span>
+        </div>
+    </div>
+    <button class="new-chat-btn" id="newChatBtn">+ New Chat</button>
+</div>
+
+<div class="main-container">
+    <div class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+            <span>📋 Chat History</span>
+            <button id="clearAllBtn">Clear All</button>
+        </div>
+        <div class="history-list" id="historyList">
+            <div style="padding: 20px; text-align: center; color: #4a4a4a;">Loading...</div>
+        </div>
+    </div>
+
+    <div class="chat-area">
+        <div class="messages-container" id="messagesContainer">
+            <div class="messages-inner" id="messagesInner">
+                <div class="welcome">
+                    <svg viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <circle cx="50" cy="50" r="50" fill="#f97316"/>
+                        <rect x="42" y="15" width="16" height="28" rx="8" fill="white"/>
+                        <rect x="34" y="36" width="32" height="14" rx="4" fill="white"/>
+                        <path d="M50 50 Q50 72 38 72 Q26 72 26 62 Q26 55 34 55" stroke="white" stroke-width="8" fill="none" stroke-linecap="round"/>
+                    </svg>
+                    <h2>Crane AI</h2>
+                    <p>Your own API platform • cak_ keys • Full memory</p>
+                    <button class="new-chat-btn" id="welcomeNewChat" style="background: #f97316; color: black;">Start a conversation</button>
+                </div>
+            </div>
+        </div>
+        <div class="input-area">
+            <div class="input-wrapper">
+                <textarea id="messageInput" placeholder="Ask anything... Crane AI remembers everything" rows="1"></textarea>
+                <button class="send-btn" id="sendBtn">↑</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // ==================== CRANE API CONFIG ====================
+    const CRANE_API_URL = "https://crane-platform-api-endpoint.umair26dc.workers.dev";
+    const CRANE_API_KEY = "cak_C6LSVGN2SBXJ-Wc8o7jtmuxdmGU_LpfTRWm70TnhCs3WrVg6";
+    
+    // ==================== STORAGE ====================
+    const STORAGE_KEY = "crane_full_chats";
+    const ACTIVE_KEY = "crane_active_id";
+    
+    let chats = [];
+    let activeChatId = null;
+    let isLoading = false;
+    
+    // ==================== HELPERS ====================
+    function showToast(msg, isErr = false) {
+        const existing = document.querySelector('.toast');
+        if (existing) existing.remove();
+        const toast = document.createElement('div');
+        toast.className = 'toast';
+        toast.textContent = msg;
+        if (isErr) toast.style.borderColor = '#f87171';
+        document.body.appendChild(toast);
+        setTimeout(() => toast.remove(), 3000);
+    }
+    
+    function generateId() {
+        return Date.now().toString(36) + Math.random().toString(36).substr(2, 8);
+    }
+    
+    function formatDate(ts) {
+        const d = new Date(ts);
+        const now = new Date();
+        const diff = now - d;
+        if (diff < 60000) return 'just now';
+        if (diff < 3600000) return `${Math.floor(diff / 60000)}m ago`;
+        if (diff < 86400000) return `${Math.floor(diff / 3600000)}h ago`;
+        return d.toLocaleDateString();
+    }
+    
+    function escapeHtml(str) {
+        if (!str) return '';
+        return str.replace(/[&<>]/g, function(m) {
+            if (m === '&') return '&amp;';
+            if (m === '<') return '&lt;';
+            if (m === '>') return '&gt;';
+            return m;
+        });
+    }
+    
+    // ==================== STORAGE ====================
+    function saveChats() {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(chats));
+    }
+    
+    function loadChats() {
+        const stored = localStorage.getItem(STORAGE_KEY);
+        if (stored) {
+            chats = JSON.parse(stored);
+            chats.forEach(c => {
+                if (!c.messages) c.messages = [];
+                if (!c.createdAt) c.createdAt = Date.now();
+                if (!c.updatedAt) c.updatedAt = Date.now();
+            });
+        }
+        if (!chats.length) {
+            chats = [{
+                id: generateId(),
+                title: "Welcome to Crane AI",
+                messages: [],
+                createdAt: Date.now(),
+                updatedAt: Date.now()
+            }];
+            saveChats();
+        }
+        const savedActive = localStorage.getItem(ACTIVE_KEY);
+        if (savedActive && chats.find(c => c.id === savedActive)) {
+            activeChatId = savedActive;
+        } else {
+            activeChatId = chats[0].id;
+        }
+    }
+    
+    function saveActive() {
+        localStorage.setItem(ACTIVE_KEY, activeChatId);
+    }
+    
+    // ==================== CHAT MANAGEMENT ====================
+    function getCurrentChat() {
+        return chats.find(c => c.id === activeChatId);
+    }
+    
+    function updateChatTitle(chatId) {
+        const chat = chats.find(c => c.id === chatId);
+        if (!chat || !chat.messages.length) return;
+        const firstUser = chat.messages.find(m => m.role === 'user');
+        if (firstUser) {
+            let title = firstUser.content.slice(0, 40);
+            if (title.length < 3) title = "New Chat";
+            chat.title = title;
+        }
+        chat.updatedAt = Date.now();
+        saveChats();
+        renderHistory();
+    }
+    
+    function addMessage(chatId, role, content) {
+        const chat = chats.find(c => c.id === chatId);
+        if (!chat) return;
+        chat.messages.push({ role, content, timestamp: Date.now() });
+        chat.updatedAt = Date.now();
+        saveChats();
+        if (role === 'user') updateChatTitle(chatId);
+        if (activeChatId === chatId) renderMessages();
+        renderHistory();
+    }
+    
+    function newChat() {
+        const newChatObj = {
+            id: generateId(),
+            title: "New Chat",
+            messages: [],
+            createdAt: Date.now(),
+            updatedAt: Date.now()
+        };
+        chats.unshift(newChatObj);
+        activeChatId = newChatObj.id;
+        saveChats();
+        saveActive();
+        renderHistory();
+        renderMessages();
+        showToast("✨ New chat created");
+    }
+    
+    function switchChat(chatId) {
+        activeChatId = chatId;
+        saveActive();
+        renderHistory();
+        renderMessages();
+        document.getElementById('sidebar')?.classList.remove('open');
+    }
+    
+    function deleteChat(chatId, event) {
+        event.stopPropagation();
+        if (chats.length === 1) {
+            showToast("Cannot delete the last chat", true);
+            return;
+        }
+        chats = chats.filter(c => c.id !== chatId);
+        if (activeChatId === chatId) {
+            activeChatId = chats[0].id;
+            saveActive();
+        }
+        saveChats();
+        renderHistory();
+        renderMessages();
+        showToast("Chat deleted");
+    }
+    
+    function clearAllChats() {
+        if (!confirm("Delete ALL chat history? This cannot be undone.")) return;
+        const fresh = {
+            id: generateId(),
+            title: "New Chat",
+            messages: [],
+            createdAt: Date.now(),
+            updatedAt: Date.now()
+        };
+        chats = [fresh];
+        activeChatId = fresh.id;
+        saveChats();
+        saveActive();
+        renderHistory();
+        renderMessages();
+        showToast("All chats cleared");
+    }
+    
+    // ==================== RENDER ====================
+    function renderHistory() {
+        const container = document.getElementById('historyList');
+        if (!container) return;
+        if (!chats.length) {
+            container.innerHTML = '<div style="padding:20px;text-align:center;color:#4a4a4a;">No chats</div>';
+            return;
+        }
+        container.innerHTML = chats.map(chat => `
+            <div class="history-item ${activeChatId === chat.id ? 'active' : ''}" onclick="window.switchChat('${chat.id}')">
+                <div class="history-title">${escapeHtml(chat.title || 'New Chat')}</div>
+                <div class="history-preview">${chat.messages.length ? escapeHtml(chat.messages[chat.messages.length-1]?.content?.slice(0, 50) || 'Empty') : 'Click to start'}</div>
+                <button class="delete-chat" onclick="window.deleteChat('${chat.id}', event)">🗑</button>
+            </div>
+        `).join('');
+    }
+    
+    function formatMessage(content) {
+        if (!content) return '';
+        let html = escapeHtml(content);
+        html = html.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+        html = html.replace(/\*(.*?)\*/g, '<em>$1</em>');
+        html = html.replace(/`{3}(\w*)\n?([\s\S]*?)`{3}/g, '<pre><code>$2</code></pre>');
+        html = html.replace(/`([^`]+)`/g, '<code>$1</code>');
+        html = html.replace(/\n/g, '<br>');
+        return html;
+    }
+    
+    function renderMessages() {
+        const container = document.getElementById('messagesInner');
+        const chat = getCurrentChat();
+        if (!chat || !chat.messages.length) {
+            container.innerHTML = `
+                <div class="welcome">
+                    <svg viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <circle cx="50" cy="50" r="50" fill="#f97316"/>
+                        <rect x="42" y="15" width="16" height="28" rx="8" fill="white"/>
+                        <rect x="34" y="36" width="32" height="14" rx="4" fill="white"/>
+                        <path d="M50 50 Q50 72 38 72 Q26 72 26 62 Q26 55 34 55" stroke="white" stroke-width="8" fill="none" stroke-linecap="round"/>
+                    </svg>
+                    <h2>Crane AI</h2>
+                    <p>Your own API • Full chat history • cak_ keys</p>
+                    <button class="new-chat-btn" id="welcomeNewChatBtn" style="background:#f97316;color:black;">Start chatting</button>
+                </div>
+            `;
+            const btn = document.getElementById('welcomeNewChatBtn');
+            if (btn) btn.onclick = () => newChat();
+            return;
+        }
+        container.innerHTML = chat.messages.map(msg => `
+            <div class="message ${msg.role}">
+                <div class="avatar">${msg.role === 'user' ? '👤' : '<svg width="24" height="24" viewBox="0 0 100 100"><circle cx="50" cy="50" r="50" fill="#f97316"/><rect x="42" y="15" width="16" height="28" rx="8" fill="white"/><rect x="34" y="36" width="32" height="14" rx="4" fill="white"/><path d="M50 50 Q50 72 38 72 Q26 72 26 62 Q26 55 34 55" stroke="white" stroke-width="8" fill="none" stroke-linecap="round"/></svg>'}</div>
+                <div class="bubble">${formatMessage(msg.content)}</div>
+            </div>
+        `).join('');
+        const scrollDiv = document.getElementById('messagesContainer');
+        if (scrollDiv) scrollDiv.scrollTop = scrollDiv.scrollHeight;
+    }
+    
+    // ==================== AI REQUEST (via Crane API) ====================
+    async function sendMessage() {
+        const input = document.getElementById('messageInput');
+        const text = input.value.trim();
+        if (!text || isLoading) return;
+        
+        const chat = getCurrentChat();
+        if (!chat) return;
+        
+        addMessage(activeChatId, 'user', text);
+        input.value = '';
+        input.style.height = 'auto';
+        renderMessages();
+        
+        isLoading = true;
+        const sendBtn = document.getElementById('sendBtn');
+        sendBtn.disabled = true;
+        
+        // Add thinking indicator
+        const container = document.getElementById('messagesInner');
+        const thinkingDiv = document.createElement('div');
+        thinkingDiv.className = 'message assistant';
+        thinkingDiv.id = 'thinkingMsg';
+        thinkingDiv.innerHTML = `
+            <div class="avatar"><svg width="24" height="24" viewBox="0 0 100 100"><circle cx="50" cy="50" r="50" fill="#f97316"/><rect x="42" y="15" width="16" height="28" rx="8" fill="white"/><rect x="34" y="36" width="32" height="14" rx="4" fill="white"/><path d="M50 50 Q50 72 38 72 Q26 72 26 62 Q26 55 34 55" stroke="white" stroke-width="8" fill="none" stroke-linecap="round"/></svg></div>
+            <div class="thinking"><div class="dot-pulse"><span></span><span></span><span></span></div><span>Crane AI is thinking...</span></div>
+        `;
+        container.appendChild(thinkingDiv);
+        const scrollDiv = document.getElementById('messagesContainer');
+        if (scrollDiv) scrollDiv.scrollTop = scrollDiv.scrollHeight;
+        
+        try {
+            // Build conversation history for context (last 10 messages)
+            const historyMessages = chat.messages.slice(-10).map(m => ({
+                role: m.role,
+                content: m.content
+            }));
+            
+            const response = await fetch(CRANE_API_URL, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${CRANE_API_KEY}`
+                },
+                body: JSON.stringify({
+                    model: 'llama-3.3-70b-versatile',
+                    messages: [
+                        { role: 'system', content: 'You are Crane AI — a helpful, friendly, and knowledgeable assistant. You remember the conversation history. Be concise but informative. Use markdown for code blocks. Be warm and direct.' },
+                        ...historyMessages
+                    ],
+                    temperature: 0.7,
+                    max_tokens: 2048
+                })
+            });
+            
+            if (!response.ok) {
+                const errorText = await response.text();
+                throw new Error(`API error: ${response.status} - ${errorText.slice(0, 100)}`);
+            }
+            
+            const data = await response.json();
+            const reply = data.choices?.[0]?.message?.content || "Sorry, I couldn't generate a response.";
+            
+            // Remove thinking indicator
+            const thinking = document.getElementById('thinkingMsg');
+            if (thinking) thinking.remove();
+            
+            addMessage(activeChatId, 'assistant', reply);
+            renderMessages();
+        } catch (error) {
+            console.error('API Error:', error);
+            const thinking = document.getElementById('thinkingMsg');
+            if (thinking) thinking.remove();
+            addMessage(activeChatId, 'assistant', `⚠️ Error: ${error.message}. Make sure your Crane API endpoint is working and the cak_ key is valid.`);
+            renderMessages();
+            showToast(`Error: ${error.message}`, true);
+        } finally {
+            isLoading = false;
+            sendBtn.disabled = false;
+            input.focus();
+        }
+    }
+    
+    // ==================== INIT & EVENT LISTENERS ====================
+    window.switchChat = switchChat;
+    window.deleteChat = deleteChat;
+    
+    document.getElementById('sendBtn').addEventListener('click', sendMessage);
+    document.getElementById('newChatBtn').addEventListener('click', newChat);
+    document.getElementById('clearAllBtn').addEventListener('click', clearAllChats);
+    document.getElementById('menuToggle').addEventListener('click', () => {
+        document.getElementById('sidebar').classList.toggle('open');
+    });
+    
+    document.getElementById('messageInput').addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' && !e.shiftKey) {
+            e.preventDefault();
+            sendMessage();
+        }
+    });
+    
+    // Auto-resize textarea
+    document.getElementById('messageInput').addEventListener('input', function() {
+        this.style.height = 'auto';
+        this.style.height = Math.min(this.scrollHeight, 120) + 'px';
+    });
+    
+    loadChats();
+    renderHistory();
+    renderMessages();
+    
+    showToast("🚀 Crane AI loaded | Using your own API endpoint", false);
+</script>
+</body>
+</html>
