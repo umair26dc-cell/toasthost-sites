@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OmniGen AI</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            background: #0a0a0a;
+            font-family: system-ui, sans-serif;
+            color: #ececec;
+            padding: 2rem;
+        }
+        .container { max-width: 900px; margin: 0 auto; }
+        h1 {
+            text-align: center;
+            font-size: 2rem;
+            margin-bottom: 2rem;
+            color: #f97316;
+        }
+        .mode-selector {
+            display: flex;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+            justify-content: center;
+            margin-bottom: 1.5rem;
+        }
+        .mode-btn {
+            background: #141414;
+            border: 1px solid #2a2a2a;
+            padding: 0.5rem 1rem;
+            border-radius: 2rem;
+            cursor: pointer;
+        }
+        .mode-btn.active, .mode-btn:hover {
+            border-color: #f97316;
+            color: #f97316;
+        }
+        textarea {
+            width: 100%;
+            background: #141414;
+            border: 1px solid #2a2a2a;
+            border-radius: 1rem;
+            padding: 1rem;
+            color: #ececec;
+            font-size: 1rem;
+            resize: vertical;
+        }
+        button {
+            width: 100%;
+            background: #f97316;
+            border: none;
+            border-radius: 1rem;
+            padding: 0.8rem;
+            margin-top: 1rem;
+            font-weight: bold;
+            cursor: pointer;
+        }
+        button:disabled { opacity: 0.5; }
+        .result-area {
+            background: #141414;
+            border-radius: 1rem;
+            padding: 1.5rem;
+            margin-top: 1rem;
+            min-height: 200px;
+        }
+        img, video { max-width: 100%; border-radius: 1rem; }
+        audio { width: 100%; }
+        .loading { text-align: center; color: #f97316; }
+        .status {
+            margin-top: 1rem;
+            text-align: center;
+            font-size: 0.75rem;
+            color: #666;
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <h1>🧬 OmniGen AI</h1>
+
+    <div class="mode-selector" id="modeSelector">
+        <button class="mode-btn active" data-mode="text">Text</button>
+        <button class="mode-btn" data-mode="image">Image</button>
+        <button class="mode-btn" data-mode="video">Video</button>
+        <button class="mode-btn" data-mode="music">Music</button>
+        <button class="mode-btn" data-mode="song">Song</button>
+    </div>
+
+    <textarea id="prompt" rows="4" placeholder="Describe what you want..."></textarea>
+    <button id="generateBtn">✨ Generate</button>
+
+    <div class="result-area" id="result">
+        <div style="color: #666; text-align: center;">Waiting for your prompt...</div>
+    </div>
+    <div class="status" id="status">Ready</div>
+</div>
+
+<script>
+    const API_URL = 'https://omnigenai-endpoint.umair26dc.workers.dev/';
+    const API_KEY = 'sk-o-offfg2z2b8avckann4';
+
+    let currentMode = 'text';
+
+    document.querySelectorAll('.mode-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            document.querySelectorAll('.mode-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            currentMode = btn.dataset.mode;
+            document.getElementById('status').innerHTML = `Mode: ${currentMode}`;
+        });
+    });
+
+    document.getElementById('generateBtn').onclick = async () => {
+        const prompt = document.getElementById('prompt').value.trim();
+        if (!prompt) return;
+
+        const resultDiv = document.getElementById('result');
+        const statusDiv = document.getElementById('status');
+        const btn = document.getElementById('generateBtn');
+
+        btn.disabled = true;
+        resultDiv.innerHTML = '<div class="loading">⏳ Generating...</div>';
+        statusDiv.innerHTML = `Generating ${currentMode}...`;
+
+        try {
+            const response = await fetch(API_URL, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${API_KEY}`
+                },
+                body: JSON.stringify({ prompt, type: currentMode })
+            });
+
+            const data = await response.json();
+            const output = data.output;
+
+            if (currentMode === 'image' && output.startsWith('http')) {
+                resultDiv.innerHTML = `<img src="${output}" alt="Generated">`;
+            } else if (currentMode === 'video' && output.startsWith('http')) {
+                resultDiv.innerHTML = `<video controls src="${output}"></video>`;
+            } else if ((currentMode === 'music' || currentMode === 'song') && output.startsWith('http')) {
+                resultDiv.innerHTML = `<audio controls src="${output}"></audio>`;
+            } else {
+                resultDiv.innerHTML = `<pre style="white-space: pre-wrap;">${output}</pre>`;
+            }
+
+            statusDiv.innerHTML = `✅ ${currentMode} generated!`;
+        } catch (err) {
+            resultDiv.innerHTML = `<div style="color: #f87171;">Error: ${err.message}</div>`;
+            statusDiv.innerHTML = '❌ Failed';
+        } finally {
+            btn.disabled = false;
+        }
+    };
+</script>
+</body>
+</html>
